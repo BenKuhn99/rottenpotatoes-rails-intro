@@ -1,5 +1,7 @@
 class MoviesController < ApplicationController
-
+  
+  before_action :set_sort_column
+  	
   def show
     id = params[:id] # retrieve movie ID from URI route
     @movie = Movie.find(id) # look up movie by unique ID
@@ -9,14 +11,22 @@ class MoviesController < ApplicationController
   def index
   @all_ratings = Movie.all_ratings
   @ratings_to_show = params[:ratings] || session[:ratings] || @all_ratings
-
-  # Remove the "1" appended to each rating
-  @ratings_to_show = @ratings_to_show.keys if @ratings_to_show.is_a?(Hash)
+  @sort_column = params[:sort]
+  
+  @ratings_to_show_hash = params[:ratings] || {}
+  @ratings_to_show = @ratings_to_show_hash.keys
+  #@ratings_to_show = @ratings_to_show.keys if @ratings_to_show.is_a?(Hash)
 
   if @ratings_to_show.nil? || @ratings_to_show.empty?
     @movies = Movie.all
   else
     @movies = Movie.with_ratings(@ratings_to_show)
+  end
+
+  if @sort_column=='title_header'
+    @movies = @movies.order(title: :asc)
+  elsif @sort_column == 'release_date_header'
+    @movies = @movies.order(release_date: :asc)
   end
 end
 
@@ -55,6 +65,19 @@ end
   def movie_params
     params.require(:movie).permit(:title, :rating, :description, :release_date)
   end
+
+  def generate_ratings_hash
+    ratings_hash = {}
+    Movie.all_ratings.each { |rating| ratings_hash[rating] = '0'}
+    @ratings_to_show.each { |rating| ratings_hash[rating] = '1'}
+    ratings_hash
+  end
+
+  def set_sort_column
+    session[:sort_column] = params[:sort] if params[:sort].present?
+    @sort_column = session[:sort_column]
+  end
+
 end
 
 class Movie < ActiveRecord::Base
