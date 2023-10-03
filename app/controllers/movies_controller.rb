@@ -7,8 +7,19 @@ class MoviesController < ApplicationController
   end
 
   def index
+  @all_ratings = Movie.all_ratings
+  @ratings_to_show = params[:ratings] || session[:ratings] || @all_ratings
+
+  # Remove the "1" appended to each rating
+  @ratings_to_show = @ratings_to_show.keys if @ratings_to_show.is_a?(Hash)
+
+  if @ratings_to_show.nil? || @ratings_to_show.empty?
     @movies = Movie.all
+  else
+    @movies = Movie.with_ratings(@ratings_to_show)
   end
+end
+
 
   def new
     # default: render 'new' template
@@ -45,3 +56,20 @@ class MoviesController < ApplicationController
     params.require(:movie).permit(:title, :rating, :description, :release_date)
   end
 end
+
+class Movie < ActiveRecord::Base
+   def self.all_ratings
+	   pluck(:rating).uniq # Adjust this list to include all your possible ratings
+   end
+   def self.with_ratings(ratings_list)
+	   if ratings_list.nil? || ratings_list.empty?
+		   all
+	   else
+		   where(rating: ratings_list.map {|r| r.upcase })
+	   end
+   end
+end   
+
+
+
+
