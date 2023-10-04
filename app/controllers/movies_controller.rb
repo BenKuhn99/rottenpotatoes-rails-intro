@@ -1,7 +1,8 @@
 class MoviesController < ApplicationController
   
   before_action :set_sort_column
-  	
+  before_action :set_ratings
+
   def show
     id = params[:id] # retrieve movie ID from URI route
     @movie = Movie.find(id) # look up movie by unique ID
@@ -9,13 +10,21 @@ class MoviesController < ApplicationController
   end
 
   def index
+
   @all_ratings = Movie.all_ratings
-  @ratings_to_show = params[:ratings] || session[:ratings] || @all_ratings
-  @sort_column = params[:sort]
+  @sort_column = params[:sort] || session[:sort_column]
+
+  if params[:ratings].present?
+    @ratings_to_show_hash=params[:ratings]
+  elsif session[:ratings].present?
+    @ratings_to_show_hash = session[:ratings]     
+  else
+    @ratings_to_show_hash= Hash[@all_ratings.collect {|rating| [rating, '1']}]
+  end
   
-  @ratings_to_show_hash = params[:ratings] || {}
   @ratings_to_show = @ratings_to_show_hash.keys
-  #@ratings_to_show = @ratings_to_show.keys if @ratings_to_show.is_a?(Hash)
+  session[:sort_column] = @sort_column
+  session[:ratings] = @ratings_to_show_hash
 
   if @ratings_to_show.nil? || @ratings_to_show.empty?
     @movies = Movie.all
@@ -78,21 +87,29 @@ end
     @sort_column = session[:sort_column]
   end
 
+  def set_ratings
+    @all_ratings = Movie.all_ratings
+    if params[:ratings].present?
+            session[:ratings] = params[:ratings].is_a?(Hash) ? params[:ratings].keys : params[:ratings]
+    elsif session[:ratings].blank?
+       session[:ratings] = @all_ratings
+    end
+    @ratings_to_show = session[:ratings]
+  end
+
 end
 
 class Movie < ActiveRecord::Base
    def self.all_ratings
-	   pluck(:rating).uniq # Adjust this list to include all your possible ratings
+           pluck(:rating).uniq # Adjust this list to include all your possible ratings
    end
    def self.with_ratings(ratings_list)
-	   if ratings_list.nil? || ratings_list.empty?
-		   all
-	   else
-		   where(rating: ratings_list.map {|r| r.upcase })
-	   end
+           if ratings_list.nil? || ratings_list.empty?
+                   all
+           else
+                   where(rating: ratings_list.map {|r| r.upcase })
+           end
    end
 end   
-
-
 
 
